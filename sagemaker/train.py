@@ -7,38 +7,38 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 
-# SageMaker paths
 DATA_DIR = "/opt/ml/input/data/train"
 MODEL_DIR = "/opt/ml/model"
 
 def main():
-    # Load data
-    df = pd.read_csv(os.path.join(DATA_DIR, "Telco-Customer-Churn.csv"))
 
-    # Preprocessing
+    files = os.listdir(DATA_DIR)
+    print("Training files:", files)
+
+    df = pd.read_csv(os.path.join(DATA_DIR, files[0]))
+
     df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
     df.dropna(inplace=True)
 
-    df['Churn'] = df['Churn'].map({'Yes': 1, 'No': 0})
+    df['Churn'] = df['Churn'].map({'Yes':1,'No':0})
     df.drop('customerID', axis=1, inplace=True)
 
-    # df = pd.get_dummies(df, drop_first=True)
     X = df.drop('Churn', axis=1)
     y = df['Churn']
 
     categorical_cols = X.select_dtypes(include=['object']).columns
-    numericla_cols= X.select_dtypes(exclude=['object']).columns
+    numerical_cols = X.select_dtypes(exclude=['object']).columns
 
     preprocessor = ColumnTransformer(
         transformers=[
-            ('cat',OneHotEncoder(handle_unknown='ignore'),categorical_cols),
-            ('num','passthrough',numericla_cols)
+            ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_cols),
+            ('num', 'passthrough', numerical_cols)
         ]
     )
 
     model = Pipeline(steps=[
-        ('preprocessor',preprocessor),
-        ('classifier',RandomForestClassifier(
+        ('preprocessor', preprocessor),
+        ('classifier', RandomForestClassifier(
             n_estimators=200,
             random_state=42
         ))
@@ -48,14 +48,8 @@ def main():
         X, y, test_size=0.2, random_state=42
     )
 
-    # Train model
-    model = RandomForestClassifier(
-        n_estimators=200,
-        random_state=42
-    )
     model.fit(X_train, y_train)
 
-    # Save model
     joblib.dump(model, os.path.join(MODEL_DIR, "model.pkl"))
 
 if __name__ == "__main__":
