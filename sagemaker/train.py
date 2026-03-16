@@ -13,7 +13,7 @@ MODEL_DIR = "/opt/ml/model"
 
 def main():
     # Load data
-    df = pd.read_csv(os.path.join(DATA_DIR, "Teleco-Customer-churn.csv"))
+    df = pd.read_csv(os.path.join(DATA_DIR, "Telco-Customer-Churn.csv"))
 
     # Preprocessing
     df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
