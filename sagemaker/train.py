@@ -1,22 +1,35 @@
 import pandas as pd
 import joblib
 import os
+
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 
-# SageMaker paths (UNCHANGED)
-DATA_DIR = "/opt/ml/input/data/train"
-MODEL_DIR = "/opt/ml/model"
 
 def main():
 
-    # Load data
-    df = pd.read_csv(os.path.join(DATA_DIR, "Telco-Customer-Churn.csv"))
+    # ✅ Works in BOTH SageMaker and Local
+    DATA_DIR = os.environ.get("SM_CHANNEL_TRAIN", "data")
+    MODEL_DIR = os.environ.get("SM_MODEL_DIR", "model")
 
-    # Preprocessing
+    print("DATA_DIR:", DATA_DIR)
+    print("MODEL_DIR:", MODEL_DIR)
+
+    # Debug: list files
+    print("FILES IN DATA_DIR:", os.listdir(DATA_DIR))
+
+    # ✅ Load dataset (MAKE SURE filename matches exactly)
+    file_path = os.path.join(DATA_DIR, "Telco-Customer-Churn.csv")
+    df = pd.read_csv(file_path)
+
+    print("Data loaded successfully")
+
+    # -----------------------------
+    # Data preprocessing
+    # -----------------------------
     df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
     df.dropna(inplace=True)
 
@@ -44,15 +57,27 @@ def main():
         ))
     ])
 
+    # -----------------------------
+    # Train
+    # -----------------------------
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
     )
 
-    # Train model
     model.fit(X_train, y_train)
 
+    print("Model training completed")
+
+    # -----------------------------
     # Save model
-    joblib.dump(model, os.path.join(MODEL_DIR, "model.pkl"))
+    # -----------------------------
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    model_path = os.path.join(MODEL_DIR, "model.pkl")
+
+    joblib.dump(model, model_path)
+
+    print("Model saved at:", model_path)
+
 
 if __name__ == "__main__":
     main()
