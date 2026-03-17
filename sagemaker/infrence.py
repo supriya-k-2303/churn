@@ -1,24 +1,30 @@
-import joblib
-import json
 import os
+import joblib
 import pandas as pd
+from sagemaker_inference import content_types, decoder, default_inference_handler
 
-def model_fn(model_dir):
-    model_path = os.path.join(model_dir, "model.pkl")
-    model = joblib.load(model_path)
-    return model
-
-def input_fn(request_body, request_content_type):
-    if request_content_type == "application/json":
-        data = json.loads(request_body)   # ✅ FIXED
-        return pd.DataFrame([data])
+class ChurnPredictor(default_inference_handler.DefaultInferenceHandler):
     
-    raise ValueError(f"Unsupported content type: {request_content_type}")
+    def default_model_fn(self, model_dir):
+        # Load the model from the tar.gz
+        model_path = os.path.join(model_dir, "model.joblib")
+        model = joblib.load(model_path)
+        return model
 
-def predict_fn(input_data, model):
-    prediction = model.predict(input_data)
-    return prediction   # ✅ return full array
+    def default_input_fn(self, input_data, content_type):
+        # Expecting CSV input
+        if content_type == content_types.CSV:
+            return pd.read_csv(pd.compat.StringIO(input_data))
+        else:
+            raise ValueError(f"Unsupported content type: {content_type}")
 
-def output_fn(prediction, response_content_type):
-    result = ["Yes" if p == 1 else "No" for p in prediction]
-    return json.dumps({"churn_prediction": result})
+    def default_predict_fn(self, data, model):
+        # Return predictions
+        return model.predict(data)
+
+    def default_output_fn(self, prediction, accept):
+        # Return CSV or JSON
+        if accept == content_types.CSV:
+            return ",".join(map(str, prediction)), content_types.CSV
+        else:
+            return prediction.tolist(), "application/json"
